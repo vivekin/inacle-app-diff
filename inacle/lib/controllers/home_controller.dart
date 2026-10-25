@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:developer';
 
 import 'package:flutter/material.dart';
@@ -46,6 +47,12 @@ class HomeController extends GetxController {
   String _clientName = "";
   String get clientName => _clientName;
 
+  String _agentLogoBase64 = "";
+  String get agentLogoBase64 => _agentLogoBase64;
+
+  bool _isLogoLoading = false;
+  bool get isLogoLoading => _isLogoLoading;
+
   @override
   void onInit() async {
     super.onInit();
@@ -64,6 +71,7 @@ class HomeController extends GetxController {
     _dashboardFuture = fetchDashboardDetails();
     await fetchClienDetails();
     await fetchClienPortal();
+    await fetchAgentLogo();
     // _isLoading = false;
     // update();
   }
@@ -146,33 +154,33 @@ class HomeController extends GetxController {
       update();
       return [
         GridItem(
-            header: 'Total Investment',
-            value: '₹${_grandTotalList.first.investmentsSwitchIns}',
-            color: const Color(0XFFfd0100)),
+          header: 'Total Investment',
+          value: '₹${_grandTotalList.first.investmentsSwitchIns}',
+        ),
         GridItem(
-            header: 'Total Valuation',
-            value: '₹${_grandTotalList.first.marketValue}',
-            color: const Color(0XFFf76915)),
+          header: 'Total Valuation',
+          value: '₹${_grandTotalList.first.marketValue}',
+        ),
         GridItem(
-            header: 'Total Div. Paid',
-            value: '₹${_grandTotalList.first.dividend}',
-            color: const Color(0XFFcbbf0b)),
+          header: 'Total Div. Paid',
+          value: '₹${_grandTotalList.first.dividend}',
+        ),
         GridItem(
-            header: 'Total Div. Reinvested',
-            value: '₹${_grandTotalList.first.dividendReinvest}',
-            color: const Color(0XFFa0d636)),
+          header: 'Total Div. Reinvested',
+          value: '₹${_grandTotalList.first.dividendReinvest}',
+        ),
         GridItem(
-            header: 'Total Gain/Loss',
-            value: formatGainLoss(_grandTotalList
-                .first.gainLoss), //'₹${_grandTotalList.first.gainLoss}',
-            color: const Color.fromARGB(255, 162, 46, 152)),
+          header: 'Total Gain/Loss',
+          value: formatGainLoss(_grandTotalList
+              .first.gainLoss), //'₹${_grandTotalList.first.gainLoss}',
+        ),
         GridItem(
-            header: 'Abs. Rtn. / XIRR',
-            value:
-                '${formatPercentage(_grandTotalList.first.absRetPer)} / ${formatPercentage(_grandTotalList.first.xirr)}',
-            //'${double.parse(_grandTotalList.first.absRetPer??'0').toStringAsFixed(2)} / ${double.parse(_grandTotalList.first.xirr??'0').toStringAsFixed(2)}',
-            //'${_grandTotalList.first.absRetPer} / ${_grandTotalList.first.xirr}',
-            color: const Color(0XFF333ed4)),
+          header: 'Abs. Rtn. / XIRR',
+          value:
+              '${formatPercentage(_grandTotalList.first.absRetPer)} / ${formatPercentage(_grandTotalList.first.xirr)}',
+          //'${double.parse(_grandTotalList.first.absRetPer??'0').toStringAsFixed(2)} / ${double.parse(_grandTotalList.first.xirr??'0').toStringAsFixed(2)}',
+          //'${_grandTotalList.first.absRetPer} / ${_grandTotalList.first.xirr}',
+        ),
       ];
     }
   }
@@ -223,5 +231,38 @@ class HomeController extends GetxController {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     prefs.clear();
     Get.offAllNamed(AppRoutes.login);
+  }
+
+  fetchAgentLogo() async {
+    _isLogoLoading = true;
+    update();
+    try {
+      final dynamic value = await HomeRepository().fetchAgentLogo();
+      if (value != null &&
+          value['logo_base64'] != null &&
+          (value['logo_base64'] as String).isNotEmpty) {
+        String logoBase64 = value['logo_base64'];
+        // Validate base64 can be decoded
+        try {
+          base64Decode(logoBase64);
+          _agentLogoBase64 = logoBase64;
+          update();
+        } catch (decodeError) {
+          log('Error decoding base64: $decodeError');
+          _agentLogoBase64 = "";
+          update();
+        }
+      } else {
+        _agentLogoBase64 = "";
+        update();
+      }
+    } catch (e) {
+      log('Error fetching agent logo: $e');
+      _agentLogoBase64 = "";
+      update();
+    } finally {
+      _isLogoLoading = false;
+      update();
+    }
   }
 }
